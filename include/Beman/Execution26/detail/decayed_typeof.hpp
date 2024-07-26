@@ -9,7 +9,8 @@
 namespace Beman::Execution26::Detail
 {
     template <auto const& Tag>
-    using decayed_typeof = decltype(auto(Tag));
+    // using decayed_typeof = decltype(auto(Tag));
+    using decayed_typeof = decltype([]{ return Tag; }());
 }
 
 // ----------------------------------------------------------------------------
