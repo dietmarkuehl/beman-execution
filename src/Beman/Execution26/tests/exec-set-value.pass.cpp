@@ -2,11 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 
 #include <Beman/Execution26/execution.hpp>
-#include <concepts>
-#include <string>
-#include <type_traits>
+#include <test/execution.hpp>
 #include <utility>
-#include "test/execution.hpp"
 
 // ----------------------------------------------------------------------------
 
@@ -31,17 +28,28 @@ namespace
         }
     };
 
+    template <typename R, typename... Args>
+    auto test_callable(Args&&... args) -> void
+    {
+        // can be called with non-const rvalue receiver
+        static_assert(requires{ test_ex::set_value(std::declval<R>(), args...); });
+        static_assert(requires{ test_ex::set_value(std::declval<R&&>(), args...); });
+
+        // cannot be called with const or lvalue receiver
+        static_assert(not requires{ test_ex::set_value(std::declval<R const>(), args...); });
+        static_assert(not requires{ test_ex::set_value(std::declval<R const&&>(), args...); });
+        static_assert(not requires{ test_ex::set_value(std::declval<R&>(), args...); });
+        static_assert(not requires{ test_ex::set_value(std::declval<R const&>(), args...); });
+        static_assert(not requires{ test_ex::set_value(std::declval<R volatile&>(), args...); });
+        static_assert(not requires{ test_ex::set_value(std::declval<R const volatile&>(), args...); });
+    }
+
     template <typename R>
-    void test_callable()
+    auto test_noexcept()
     {
         static_assert(requires{ test_ex::set_value(std::declval<R>()); });
-        static_assert(not requires{ test_ex::set_value(std::declval<R const>()); });
-        static_assert(requires{ test_ex::set_value(std::declval<R&&>()); });
-        static_assert(not requires{ test_ex::set_value(std::declval<R const&&>()); });
-        static_assert(not requires{ test_ex::set_value(std::declval<R&>()); });
-        static_assert(not requires{ test_ex::set_value(std::declval<R const&>()); });
-        static_assert(not requires{ test_ex::set_value(std::declval<R volatile&>()); });
-        static_assert(not requires{ test_ex::set_value(std::declval<R const volatile&>()); });
+        static_assert(requires{ test_ex::set_value(std::declval<R>(), arg<0>()); });
+        static_assert(not requires{ test_ex::set_value(std::declval<R>(), throws()); });
     }
 }
 
@@ -50,14 +58,15 @@ auto main() -> int
     static_assert(std::semiregular<test_ex::set_value_t>);
     static_assert(std::same_as<test_ex::set_value_t const, decltype(test_ex::set_value)>);
 
-    #if defined(BEMAN_EXECUTION26_HAS_DELETED_MESSAGE)
-    //-dk:TODO add negative compilation tests
     test_callable<receiver>();
-    #endif
+    test_callable<receiver>(arg<0>());
+    test_callable<receiver>(arg<0>(), arg<1>());
+    test_callable<receiver>(arg<0>(), arg<1>(), arg<2>());
 
     test_ex::set_value(receiver{}, 1);
     test_ex::set_value(receiver{}, arg<0>(), arg<1>(), arg<2>(), arg<3>(), arg<4>());
     test_ex::set_value(receiver{}, 42, true, 123.75);
-    //-dk:TODO add negative compilation tests: test_ex::set_value(receiver{}, throws());
+
+    test_noexcept<receiver>();
 }
 

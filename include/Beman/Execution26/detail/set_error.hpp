@@ -4,42 +4,38 @@
 #ifndef INCLUDED_BEMAN_EXECUTION26_DETAIL_SET_ERROR
 #define INCLUDED_BEMAN_EXECUTION26_DETAIL_SET_ERROR
 
+#include <Beman/Execution26/detail/common.hpp>
+#include <utility>
+
 // ----------------------------------------------------------------------------
 
 namespace Beman::Execution26
 {
     struct set_error_t
     {
-        #if defined(BEMAN_EXECUTION26_HAS_DELETED_MESSAGE)
-            // see set_value for details
         template <typename Receiver, typename Error>
         auto operator()(Receiver&, Error&&) const -> void
-            = delete("set_error requires the receiver to be passed as non-const rvalue");
+            = BEMAN_EXECUTION26_DELETE("set_error requires the receiver to be passed as non-const rvalue");
         template <typename Receiver, typename Error>
         auto operator()(Receiver const&&, Error&&) const -> void
-            = delete("set_error requires the receiver to be passed as non-const rvalue");
-        #endif
+            = BEMAN_EXECUTION26_DELETE("set_error requires the receiver to be passed as non-const rvalue");
+        template <typename Receiver, typename Error>
+        auto operator()(Receiver&&, Error&&) const -> void
+            requires (not requires(Receiver&& receiver, Error&& error)
+            {
+                ::std::forward<Receiver>(receiver).set_error(::std::forward<Error>(error));
+            })
+            = BEMAN_EXECUTION26_DELETE("set_error requires a suitable member overload on the receiver");
+        template <typename Receiver, typename Error>
+            requires (not noexcept(::std::declval<Receiver>().set_error(::std::declval<Error>())))
+        auto operator()(Receiver&&, Error&&) const -> void
+            = BEMAN_EXECUTION26_DELETE("the call to receiver.set_error(error) has to be noexcept");
+
 
         template <typename Receiver, typename Error>
-        auto operator()(Receiver&& receiver, Error&& error) const -> void
-            //-dk:TODO should this operation be noexcept?
-            #if not defined(BEMAN_EXECUTION26_HAS_DELETED_MESSAGE) and false
-                // see set_value for details
-            requires(
-                not std::is_lvalue_reference_v<Receiver>
-                && not std::is_const_v<std::remove_reference_t<Receiver>>
-                && noexcept(std::declval<Receiver>().set_error(std::declval<Error>()))
-            )
-            #endif
+        auto operator()(Receiver&& receiver, Error&& error) const noexcept -> void
         {
-            static_assert(not std::is_lvalue_reference_v<Receiver>,
-                          "set_error requires the receiver to be passed as non-const rvalue");
-            static_assert(not std::is_const_v<std::remove_reference_t<Receiver>>,
-                          "set_error requires the receiver to be passed as non-const rvalue");
-
-            static_assert(noexcept(std::forward<Receiver>(receiver).set_error(std::forward<Error>(error))),
-                          "the call to receiver.set_error(e) has to be noexcept");
-            std::forward<Receiver>(receiver).set_error(std::forward<Error>(error));
+            ::std::forward<Receiver>(receiver).set_error(::std::forward<Error>(error));
         }
     };
     

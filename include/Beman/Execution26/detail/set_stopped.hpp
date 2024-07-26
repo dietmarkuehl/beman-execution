@@ -4,42 +4,37 @@
 #ifndef INCLUDED_BEMAN_EXECUTION26_DETAIL_SET_STOPPED
 #define INCLUDED_BEMAN_EXECUTION26_DETAIL_SET_STOPPED
 
+#include <Beman/Execution26/detail/common.hpp>
+#include <utility>
+
 // ----------------------------------------------------------------------------
 
 namespace Beman::Execution26
 {
     struct set_stopped_t
     {
-        #if defined(BEMAN_EXECUTION26_HAS_DELETED_MESSAGE)
-            // see set_value for details
         template <typename Receiver>
         auto operator()(Receiver&) const -> void
-            = delete("set_stopped requires the receiver to be passed as non-const rvalue");
+            = BEMAN_EXECUTION26_DELETE("set_stopped requires the receiver to be passed as non-const rvalue");
         template <typename Receiver>
         auto operator()(Receiver const&&) const -> void
-            = delete("set_stopped requires the receiver to be passed as non-const rvalue");
-        #endif
+            = BEMAN_EXECUTION26_DELETE("set_stopped requires the receiver to be passed as non-const rvalue");
+        template <typename Receiver>
+        auto operator()(Receiver&&) const -> void
+            requires (not requires(Receiver&& receiver)
+            {
+                ::std::forward<Receiver>(receiver).set_stopped();
+            })
+            = BEMAN_EXECUTION26_DELETE("set_stopped requires a suitable member overload on the receiver");
+        template <typename Receiver>
+            requires (not noexcept(::std::declval<Receiver>().set_stopped()))
+        auto operator()(Receiver&&) const -> void
+            = BEMAN_EXECUTION26_DELETE("the call to receiver.set_stopped() has to be noexcept");
 
         template <typename Receiver>
-        auto operator()(Receiver&& receiver) const -> void
-            //-dk:TODO should this operation be noexcept?
-            #if not defined(BEMAN_EXECUTION26_HAS_DELETED_MESSAGE) and false
-                // see set_value for details
-            requires(
-                not std::is_lvalue_reference_v<Receiver>
-                && not std::is_const_v<std::remove_reference_t<Receiver>>
-                && noexcept(std::declval<Receiver>().set_stopped())
-            )
-            #endif
+        auto operator()(Receiver&& receiver) const noexcept -> void
         {
-            static_assert(not std::is_lvalue_reference_v<Receiver>,
-                          "set_stopped requires the receiver to be passed as non-const rvalue");
-            static_assert(not std::is_const_v<std::remove_reference_t<Receiver>>,
-                          "set_stopped requires the receiver to be passed as non-const rvalue");
-
-            static_assert(noexcept(std::forward<Receiver>(receiver).set_stopped()),
-                          "the call to receiver.set_stopped() has to be noexcept");
-            std::forward<Receiver>(receiver).set_stopped();
+            ::std::forward<Receiver>(receiver).set_stopped();
         }
     };
 

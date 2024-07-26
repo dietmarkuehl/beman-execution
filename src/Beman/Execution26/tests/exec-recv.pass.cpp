@@ -61,7 +61,7 @@ namespace
     };
 }
 
-auto main() -> int
+auto test_receiver_concept() -> void
 {
     static_assert(not test_ex::receiver<no_receiver_concept>);
     static_assert(not test_ex::receiver<receiver_concept_not_deriving_from_receiver_t>);
@@ -73,4 +73,40 @@ auto main() -> int
 
     static_assert(test_ex::receiver<receiver_base>);
     static_assert(test_ex::receiver<receiver_derived>);
+}
+
+namespace
+{
+    template <int> struct arg_t {};
+
+    struct receiver1
+    {
+        auto set_value(arg_t<0>) noexcept -> void {}
+        auto set_value(arg_t<2>) -> void {}
+        auto set_error(arg_t<1>) noexcept -> void {}
+        auto set_error(int) -> void {}
+        auto set_stopped() noexcept -> void {}
+    };
+}
+
+auto test_valid_completions_for_concept() -> void
+{
+    test_ex::set_value(receiver1{}, arg_t<0>());
+    static_assert(test_ex::Detail::callable<test_ex::set_value_t, receiver1, arg_t<0>>);
+    static_assert(not test_ex::Detail::callable<test_ex::set_value_t, receiver1, int>);
+    static_assert(not test_ex::Detail::callable<test_ex::set_value_t, receiver1, arg_t<1>>);
+    static_assert(test_ex::Detail::valid_completion_for<auto(arg_t<0>) -> test_ex::set_value_t, receiver1>);
+    static_assert(not test_ex::Detail::valid_completion_for<auto(arg_t<1>) -> test_ex::set_value_t, receiver1>);
+    static_assert(not test_ex::Detail::valid_completion_for<auto(arg_t<2>) -> test_ex::set_value_t, receiver1>);
+
+    static_assert(test_ex::Detail::valid_completion_for<auto(arg_t<1>) -> test_ex::set_error_t, receiver1>);
+    static_assert(not test_ex::Detail::valid_completion_for<auto(int) -> test_ex::set_error_t, receiver1>);
+
+    static_assert(test_ex::Detail::valid_completion_for<auto() -> test_ex::set_stopped_t, receiver1>);
+}
+
+auto main() -> int
+{
+    test_receiver_concept();
+    test_valid_completions_for_concept();
 }
