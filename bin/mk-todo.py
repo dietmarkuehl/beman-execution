@@ -16,8 +16,8 @@ json = json.loads(open("docs/TODO.json").read())
 
 list = re.findall('<a class="self-link" href="#spec-([^"]*)">', html)
 
-ok   = "&#x2705;"  # "&#9744;"
-fail = "&#x1F534;" # "&#9745;"
+fail = "&#x2705;"  # "&#9744;"
+ok   = "&#x1F534;" # "&#9745;"
 
 with open("docs/TODO.md", "w") as todo:
     print(f"# ToDo ", file=todo)
